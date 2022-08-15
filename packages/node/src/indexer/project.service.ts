@@ -3,7 +3,6 @@
 
 import assert from 'assert';
 import fs from 'fs';
-import { isMainThread } from 'worker_threads';
 import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { getAllEntitiesRelations } from '@subql/utils';
@@ -21,6 +20,7 @@ import { IndexerEvent } from './events';
 import { MmrService } from './mmr.service';
 import { PoiService } from './poi.service';
 import { StoreService } from './store.service';
+import { isMainProcess } from './worker/worker.builder';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { version: packageVersion } = require('../../package.json');
@@ -65,7 +65,7 @@ export class ProjectService {
 
   async init(): Promise<void> {
     // Do extra work on main thread to setup stuff
-    if (isMainThread) {
+    if (isMainProcess()) {
       await this.dsProcessorService.validateProjectCustomDatasources();
 
       this._schema = await this.ensureProject();

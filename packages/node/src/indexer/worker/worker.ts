@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from 'assert';
-import { threadId } from 'node:worker_threads';
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { getLogger, NestLogger } from '../../utils/logger';
 import { IndexerManager } from '../indexer.manager';
-import { registerWorker } from './worker.builder';
+import { registerWorker, workerId } from './worker.builder';
 import { WorkerModule } from './worker.module';
 import {
   FetchBlockResponse,
@@ -19,7 +18,7 @@ import {
 let app: INestApplication;
 let workerService: WorkerService;
 
-const logger = getLogger(`worker #${threadId}`);
+const logger = getLogger(`worker #${workerId()}`);
 
 async function initWorker(): Promise<void> {
   try {
@@ -78,7 +77,7 @@ async function numFetchingBlocks(): Promise<number> {
 // eslint-disable-next-line @typescript-eslint/require-await
 async function getStatus(): Promise<WorkerStatusResponse> {
   return {
-    threadId,
+    threadId: workerId(),
     fetchedBlocks: workerService.numFetchedBlocks,
     toFetchBlocks: workerService.numFetchingBlocks,
     isIndexing: workerService.isIndexing,

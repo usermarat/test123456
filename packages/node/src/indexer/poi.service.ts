@@ -1,13 +1,13 @@
 // Copyright 2020-2022 OnFinality Limited authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
-import { isMainThread } from 'node:worker_threads';
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { hexToU8a } from '@polkadot/util';
 import { Sequelize } from 'sequelize';
 import { NodeConfig } from '../configure/NodeConfig';
 import { SubqueryProject } from '../configure/SubqueryProject';
 import { PoiFactory, PoiRepo } from './entities/Poi.entity';
+import { isMainProcess } from './worker/worker.builder';
 
 const DEFAULT_PARENT_HASH = hexToU8a('0x00');
 
@@ -48,7 +48,7 @@ export class PoiService implements OnApplicationShutdown {
   }
 
   async getLatestPoiBlockHash(): Promise<Uint8Array | null> {
-    if (!this.latestPoiBlockHash || !isMainThread) {
+    if (!this.latestPoiBlockHash || !isMainProcess()) {
       const poiBlockHash = await this.fetchPoiBlockHashFromDb();
       if (poiBlockHash === null || poiBlockHash === undefined) {
         this.latestPoiBlockHash = DEFAULT_PARENT_HASH;

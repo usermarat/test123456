@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from 'assert';
-import { isMainThread } from 'worker_threads';
 import { Injectable } from '@nestjs/common';
 import { hexToU8a, u8aToBuffer } from '@polkadot/util';
 import { blake2AsHex } from '@polkadot/util-crypto';
@@ -59,6 +58,7 @@ import {
 import { PoiFactory, PoiRepo, ProofOfIndex } from './entities/Poi.entity';
 import { StoreOperations } from './StoreOperations';
 import { OperationType } from './types';
+import { isMainProcess } from './worker/worker.builder';
 
 const logger = getLogger('store');
 const NULL_MERKEL_ROOT = hexToU8a('0x00');
@@ -309,7 +309,7 @@ export class StoreService {
     // this will allow alter current entity, including fields
     // TODO, add rules for changes, eg only allow add nullable field
     // Only allow altering the tables on the main thread
-    await this.sequelize.sync({ alter: { drop: isMainThread } });
+    await this.sequelize.sync({ alter: { drop: isMainProcess() } });
     await this.setMetadata('historicalStateEnabled', this.historical);
     for (const query of extraQueries) {
       await this.sequelize.query(query);
@@ -638,7 +638,10 @@ group by
 
   getStore(): Store {
     return {
-      get: async (entity: string, id: string): Promise<Entity | undefined> => {
+      get: async <T extends Entity = Entity>(
+        entity: string,
+        id: string,
+      ): Promise<T | undefined> => {
         try {
           const model = this.sequelize.model(entity);
           assert(model, `model ${entity} not exists`);
@@ -646,16 +649,16 @@ group by
             where: { id },
             transaction: this.tx,
           });
-          return record?.toJSON() as Entity;
+          return record?.toJSON() as T;
         } catch (e) {
           throw new Error(`Failed to get Entity ${entity} with id ${id}: ${e}`);
         }
       },
-      getByField: async (
+      getByField: async <T extends Entity = Entity>(
         entity: string,
-        field: string,
-        value,
-      ): Promise<Entity[] | undefined> => {
+        field: keyof T,
+        value: T[keyof T] | T[keyof T][],
+      ): Promise<T[] | undefined> => {
         try {
           const model = this.sequelize.model(entity);
           assert(model, `model ${entity} not exists`);
@@ -669,23 +672,25 @@ group by
             indexed,
             `to query by field ${field}, an index must be created on model ${entity}`,
           );
+
+          const val = Array.isArray(value) ? { [Op.in]: value } : value;
           const records = await model.findAll({
-            where: { [field]: value },
+            where: { [field]: val },
             transaction: this.tx,
             limit: this.config.queryLimit,
           });
-          return records.map((record) => record.toJSON() as Entity);
+          return records.map((record) => record.toJSON() as T);
         } catch (e) {
           throw new Error(
             `Failed to getByField Entity ${entity} with field ${field}: ${e}`,
           );
         }
       },
-      getOneByField: async (
+      getOneByField: async <T extends Entity = Entity>(
         entity: string,
-        field: string,
-        value,
-      ): Promise<Entity | undefined> => {
+        field: keyof T,
+        value: T[keyof T],
+      ): Promise<T | undefined> => {
         try {
           const model = this.sequelize.model(entity);
           assert(model, `model ${entity} not exists`);
@@ -704,7 +709,7 @@ group by
             where: { [field]: value },
             transaction: this.tx,
           });
-          return record?.toJSON() as Entity;
+          return record?.toJSON() as T;
         } catch (e) {
           throw new Error(
             `Failed to getOneByField Entity ${entity} with field ${field}: ${e}`,

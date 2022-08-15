@@ -55,7 +55,7 @@ type IndexerWorker = IIndexerWorker & {
   terminate: () => Promise<number>;
 };
 
-async function createIndexerWorker(): Promise<IndexerWorker> {
+async function createIndexerWorker(id: number): Promise<IndexerWorker> {
   const indexerWorker = Worker.create<IInitIndexerWorker>(
     path.resolve(__dirname, '../../../dist/indexer/worker/worker.js'),
     [
@@ -67,6 +67,7 @@ async function createIndexerWorker(): Promise<IndexerWorker> {
       'setCurrentRuntimeVersion',
       'getStatus',
     ],
+    id,
   );
 
   await indexerWorker.initWorker();
@@ -319,7 +320,9 @@ export class WorkerBlockDispatcherService
     onDynamicDsCreated: (height: number) => Promise<void>,
   ): Promise<void> {
     this.workers = await Promise.all(
-      new Array(this.numWorkers).fill(0).map(() => createIndexerWorker()),
+      new Array(this.numWorkers)
+        .fill(0)
+        .map((_, id) => createIndexerWorker(id)),
     );
 
     this.getRuntimeVersion = runtimeVersionGetter;

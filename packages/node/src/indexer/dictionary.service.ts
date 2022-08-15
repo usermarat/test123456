@@ -18,6 +18,7 @@ import { getLogger } from '../utils/logger';
 import { profiler } from '../utils/profiler';
 import { timeout } from '../utils/promise';
 import { getYargsOption } from '../yargs';
+import { workerId } from './worker/worker.builder';
 
 export type SpecVersion = {
   id: string;

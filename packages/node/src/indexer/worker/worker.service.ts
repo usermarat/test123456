@@ -1,7 +1,6 @@
 // Copyright 2020-2022 OnFinality Limited authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
-import { threadId } from 'node:worker_threads';
 import { Injectable } from '@nestjs/common';
 import { RuntimeVersion } from '@polkadot/types/interfaces';
 import { NodeConfig } from '../../configure/NodeConfig';
@@ -11,6 +10,7 @@ import { fetchBlocksBatches } from '../../utils/substrate';
 import { ApiService } from '../api.service';
 import { IndexerManager } from '../indexer.manager';
 import { BlockContent } from '../types';
+import { workerId } from './worker.builder';
 
 export type FetchBlockResponse =
   | { specVersion: number; parentHash: string }
@@ -28,7 +28,7 @@ export type WorkerStatusResponse = {
   toFetchBlocks: number;
 };
 
-const logger = getLogger(`Worker Service #${threadId}`);
+const logger = getLogger(`Worker Service #${workerId()}`);
 
 @Injectable()
 export class WorkerService {
