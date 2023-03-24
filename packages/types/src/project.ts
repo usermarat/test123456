@@ -47,6 +47,7 @@ export interface ProjectManifest {
   };
 
   dataSources: SubqlDatasource[];
+  bypassBlocks?: number[];
 }
 
 export interface SubqlBlockHandler {

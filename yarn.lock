@@ -2967,7 +2967,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@subql/common@npm:1.7.0":
+"@subql/common@npm:1.7.0, @subql/common@npm:^1.7.0":
   version: 1.7.0
   resolution: "@subql/common@npm:1.7.0"
   dependencies:
@@ -2983,9 +2983,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@subql/node-core@npm:1.10.0, @subql/node-core@npm:^1.10.0":
-  version: 1.10.0
-  resolution: "@subql/node-core@npm:1.10.0"
+"@subql/node-core@npm:1.10.1-storeCache-0.0.2":
+  version: 1.10.1-storeCache-0.0.2
+  resolution: "@subql/node-core@npm:1.10.1-storeCache-0.0.2"
   dependencies:
     "@nestjs/common": ^8.2.6
     "@nestjs/event-emitter": ^1.3.0
@@ -2997,12 +2997,15 @@ __metadata:
     "@subql/utils": 1.4.1
     "@subql/x-merkle-mountain-range": ^2.0.0-0.1.2
     "@willsoto/nestjs-prometheus": ^4.4.0
+    async-lock: ^1.4.0
+    async-mutex: ^0.4.0
     lodash: ^4.17.21
+    lru-cache: 8.0.4
     prom-client: ^14.0.1
     sequelize: 6.28.0
     vm2: ^3.9.9
     yargs: ^16.2.0
-  checksum: e9e33a84ddf95688a5c35f815f430f9c0e215facabcb0548c8f2a8c734e1fd9695f7e2ca706ae7b98f95e3065f0bd34b39c18213aa06bbef3a3625952532b97f
+  checksum: 52ea7cec4bedf726e2990da5bd8dc32fa1e329979a3e1a78e5fcebbe005591b6032b422c1fae7b4d8701be438cc170717557fa06eadb0e16ec5a21134659877a
   languageName: node
   linkType: hard
 
@@ -3018,11 +3021,11 @@ __metadata:
     "@nestjs/schedule": ^1.0.2
     "@nestjs/schematics": ^8.0.5
     "@nestjs/testing": ^8.2.6
-    "@subql/common": 1.7.0
+    "@subql/common": ^1.7.0
     "@subql/common-ethereum": "workspace:*"
-    "@subql/node-core": 1.10.0
+    "@subql/node-core": 1.10.1-storeCache-0.0.2
     "@subql/types-ethereum": "workspace:*"
-    "@subql/utils": 1.4.1
+    "@subql/utils": ^1.4.1
     "@subql/x-merkle-mountain-range": 2.0.0-0.1.2
     "@types/app-module-path": ^2.2.0
     "@types/express": ^4.17.13
@@ -3049,7 +3052,7 @@ __metadata:
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
     rxjs: ^7.5.2
-    sequelize: 6.23.0
+    sequelize: 6.28.0
     supertest: ^6.2.2
     tar: ^6.1.11
     typescript: ^4.4.4
@@ -4203,6 +4206,22 @@ __metadata:
   version: 2.0.0
   resolution: "astral-regex@npm:2.0.0"
   checksum: 876231688c66400473ba505731df37ea436e574dd524520294cc3bbc54ea40334865e01fa0d074d74d036ee874ee7e62f486ea38bc421ee8e6a871c06f011766
+  languageName: node
+  linkType: hard
+
+"async-lock@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "async-lock@npm:1.4.0"
+  checksum: a71ef9e50dc448a8e8dd6482494210d7b6f556d4815612b1fed5662216cd756c2c8fb9c2153a9a66ea90b36ba7fb18aa568d11813aadc23feb4c5b0b188df614
+  languageName: node
+  linkType: hard
+
+"async-mutex@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "async-mutex@npm:0.4.0"
+  dependencies:
+    tslib: ^2.4.0
+  checksum: 813a71728b35a4fbfd64dba719f04726d9133c67b577fcd951b7028c4a675a13ee34e69beb82d621f87bf81f5d4f135c4c44be0448550c7db728547244ef71fc
   languageName: node
   linkType: hard
 
@@ -8653,6 +8672,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lru-cache@npm:8.0.4":
+  version: 8.0.4
+  resolution: "lru-cache@npm:8.0.4"
+  checksum: dee2b905a8cd688c5847faa46ba3cfeaa0766283b244bfd6177420e04e9d923fc901a9a578fc3963d70959631595240ead37abaf43e21968bb9805bbd9519856
+  languageName: node
+  linkType: hard
+
 "lru-cache@npm:^6.0.0":
   version: 6.0.0
   resolution: "lru-cache@npm:6.0.0"
@@ -10363,13 +10389,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"retry-as-promised@npm:^6.1.0":
-  version: 6.1.0
-  resolution: "retry-as-promised@npm:6.1.0"
-  checksum: cde3ad5c827d3f51b9161b9453dfd5eb8b8b6c22b6b405f7294eaa1939ef1966f8bd4c8a228ce2d66a24959d1dcc48b113c4c810ecdaddec2968b6d20576329d
-  languageName: node
-  linkType: hard
-
 "retry-as-promised@npm:^7.0.3":
   version: 7.0.4
   resolution: "retry-as-promised@npm:7.0.4"
@@ -10603,49 +10622,6 @@ __metadata:
   version: 7.1.0
   resolution: "sequelize-pool@npm:7.1.0"
   checksum: b11d06d02de9e8fc428ba3020b86f05fe7adad764e57f23c5901f924e31867901a5e7a090180337dc3b90de3934b64f34ae552fde37b0f3d37b09c0c8ecbddc7
-  languageName: node
-  linkType: hard
-
-"sequelize@npm:6.23.0":
-  version: 6.23.0
-  resolution: "sequelize@npm:6.23.0"
-  dependencies:
-    "@types/debug": ^4.1.7
-    "@types/validator": ^13.7.1
-    debug: ^4.3.3
-    dottie: ^2.0.2
-    inflection: ^1.13.2
-    lodash: ^4.17.21
-    moment: ^2.29.1
-    moment-timezone: ^0.5.34
-    pg-connection-string: ^2.5.0
-    retry-as-promised: ^6.1.0
-    semver: ^7.3.5
-    sequelize-pool: ^7.1.0
-    toposort-class: ^1.0.1
-    uuid: ^8.3.2
-    validator: ^13.7.0
-    wkx: ^0.5.0
-  peerDependenciesMeta:
-    ibm_db:
-      optional: true
-    mariadb:
-      optional: true
-    mysql2:
-      optional: true
-    oracledb:
-      optional: true
-    pg:
-      optional: true
-    pg-hstore:
-      optional: true
-    snowflake-sdk:
-      optional: true
-    sqlite3:
-      optional: true
-    tedious:
-      optional: true
-  checksum: bee85b96c5520284a7bca5b5ef296a8acbe43299003e95eee89a803b2841e36f56c39cf7826f3217e5a9206095b861b64e7981a6b7da0534decf278454eb9b71
   languageName: node
   linkType: hard
 
@@ -11114,8 +11090,6 @@ __metadata:
     "@actions/core": ^1.6.0
     "@babel/preset-env": ^7.16.11
     "@octokit/request": ^5.6.3
-    "@subql/node-core": ^1.10.0
-    "@subql/utils": ^1.4.1
     "@types/cron-converter": ^1
     "@types/node": ^14.18.10
     "@typescript-eslint/eslint-plugin": ^5.10.2
@@ -11522,6 +11496,13 @@ __metadata:
   version: 2.4.1
   resolution: "tslib@npm:2.4.1"
   checksum: 19480d6e0313292bd6505d4efe096a6b31c70e21cf08b5febf4da62e95c265c8f571f7b36fcc3d1a17e068032f59c269fab3459d6cd3ed6949eafecf64315fca
+  languageName: node
+  linkType: hard
+
+"tslib@npm:^2.4.0":
+  version: 2.5.0
+  resolution: "tslib@npm:2.5.0"
+  checksum: ae3ed5f9ce29932d049908ebfdf21b3a003a85653a9a140d614da6b767a93ef94f460e52c3d787f0e4f383546981713f165037dc2274df212ea9f8a4541004e1
   languageName: node
   linkType: hard
 

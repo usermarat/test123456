@@ -10,6 +10,8 @@ import {
   PoiService,
   ApiService,
   NodeConfig,
+  SmartBatchService,
+  StoreCacheService,
 } from '@subql/node-core';
 import { SubqueryProject } from '../configure/SubqueryProject';
 import { EthereumApiService } from '../ethereum/api.service.ethereum';
@@ -29,6 +31,7 @@ import { UnfinalizedBlocksService } from './unfinalizedBlocks.service';
 @Module({
   providers: [
     StoreService,
+    StoreCacheService,
     {
       provide: ApiService,
       useFactory: async (
@@ -43,6 +46,13 @@ import { UnfinalizedBlocksService } from './unfinalizedBlocks.service';
     },
     IndexerManager,
     {
+      provide: SmartBatchService,
+      useFactory: (nodeConfig: NodeConfig) => {
+        return new SmartBatchService(nodeConfig.batchSize);
+      },
+      inject: [NodeConfig],
+    },
+    {
       provide: 'IBlockDispatcher',
       useFactory: (
         nodeConfig: NodeConfig,
@@ -50,12 +60,26 @@ import { UnfinalizedBlocksService } from './unfinalizedBlocks.service';
         projectService: ProjectService,
         apiService: ApiService,
         indexerManager: IndexerManager,
+        smartBatchService: SmartBatchService,
+        storeService: StoreService,
+        storeCacheService: StoreCacheService,
+        poiService: PoiService,
+        project: SubqueryProject,
+        dynamicDsService: DynamicDsService,
+        unfinalizedBlocks: UnfinalizedBlocksService,
       ) =>
         nodeConfig.workers !== undefined
           ? new WorkerBlockDispatcherService(
               nodeConfig,
               eventEmitter,
               projectService,
+              smartBatchService,
+              storeService,
+              storeCacheService,
+              poiService,
+              project,
+              dynamicDsService,
+              unfinalizedBlocks,
             )
           : new BlockDispatcherService(
               apiService,
@@ -63,13 +87,26 @@ import { UnfinalizedBlocksService } from './unfinalizedBlocks.service';
               indexerManager,
               eventEmitter,
               projectService,
+              smartBatchService,
+              storeService,
+              storeCacheService,
+              poiService,
+              project,
+              dynamicDsService,
             ),
       inject: [
         NodeConfig,
         EventEmitter2,
-        ProjectService,
+        'IProjectService',
         ApiService,
         IndexerManager,
+        SmartBatchService,
+        StoreService,
+        StoreCacheService,
+        PoiService,
+        'ISubqueryProject',
+        DynamicDsService,
+        UnfinalizedBlocksService,
       ],
     },
     FetchService,
@@ -88,9 +125,12 @@ import { UnfinalizedBlocksService } from './unfinalizedBlocks.service';
     DynamicDsService,
     PoiService,
     MmrService,
-    ProjectService,
+    {
+      useClass: ProjectService,
+      provide: 'IProjectService',
+    },
     UnfinalizedBlocksService,
   ],
-  exports: [StoreService, MmrService],
+  exports: [StoreService, MmrService, StoreCacheService],
 })
 export class FetchModule {}

@@ -4,36 +4,36 @@
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Interval, SchedulerRegistry } from '@nestjs/schedule';
+
 import {
   isCustomDs,
   EthereumHandlerKind,
-  SubqlHandlerFilter,
+  EthereumLogFilter,
+  SubqlEthereumProcessorOptions,
+  EthereumTransactionFilter,
 } from '@subql/common-ethereum';
 import {
   ApiService,
-  Dictionary,
+  cleanedBatchBlocks,
   checkMemoryUsage,
   delay,
   getLogger,
   IndexerEvent,
   NodeConfig,
   transformBypassBlocks,
-  cleanedBatchBlocks,
+  waitForBatchSize,
 } from '@subql/node-core';
 import {
-  DictionaryQueryEntry,
   ApiWrapper,
-  EthereumLogFilter,
-  EthereumTransactionFilter,
-  SubqlEthereumProcessorOptions,
   DictionaryQueryCondition,
+  DictionaryQueryEntry,
 } from '@subql/types-ethereum';
 import { MetaData } from '@subql/utils';
-import { range, sortBy, uniqBy, without, groupBy, add } from 'lodash';
+import { groupBy, range, sortBy, uniqBy, without } from 'lodash';
 import { SubqlProjectDs, SubqueryProject } from '../configure/SubqueryProject';
 import { calcInterval } from '../ethereum/utils.ethereum';
 import { eventToTopic, functionToSighash } from '../utils/string';
-import { IBlockDispatcher } from './blockDispatcher';
+import { IEthereumBlockDispatcher } from './blockDispatcher';
 import { DictionaryService } from './dictionary.service';
 import { DynamicDsService } from './dynamic-ds.service';
 import { UnfinalizedBlocksService } from './unfinalizedBlocks.service';
@@ -135,7 +135,8 @@ export class FetchService implements OnApplicationShutdown {
     private apiService: ApiService,
     private nodeConfig: NodeConfig,
     @Inject('ISubqueryProject') private project: SubqueryProject,
-    @Inject('IBlockDispatcher') private blockDispatcher: IBlockDispatcher,
+    @Inject('IBlockDispatcher')
+    private blockDispatcher: IEthereumBlockDispatcher,
     private dictionaryService: DictionaryService,
     private dynamicDsService: DynamicDsService,
     private unfinalizedBlocksService: UnfinalizedBlocksService,
@@ -434,10 +435,13 @@ export class FetchService implements OnApplicationShutdown {
     while (!this.isShutdown) {
       startBlockHeight = getStartBlockHeight();
 
-      scaledBatchSize = Math.max(
-        Math.round(this.batchSizeScale * this.nodeConfig.batchSize),
-        Math.min(MINIMUM_BATCH_SIZE, this.nodeConfig.batchSize * 3),
-      );
+      scaledBatchSize = this.blockDispatcher.smartBatchSize;
+
+      if (scaledBatchSize === 0) {
+        await waitForBatchSize(this.blockDispatcher.minimumHeapLimit);
+        continue;
+      }
+
       const latestHeight = this.nodeConfig.unfinalizedBlocks
         ? this.latestBestHeight
         : this.latestFinalizedHeight;
@@ -486,7 +490,7 @@ export class FetchService implements OnApplicationShutdown {
               .sort((a, b) => a - b);
             if (batchBlocks.length === 0) {
               // There we're no blocks in this query range, we can set a new height we're up to
-              this.blockDispatcher.enqueueBlocks(
+              await this.blockDispatcher.enqueueBlocks(
                 [],
                 Math.min(
                   queryEndBlock - 1,
@@ -501,8 +505,7 @@ export class FetchService implements OnApplicationShutdown {
               const enqueuingBlocks = batchBlocks.slice(0, maxBlockSize);
               const cleanedBatchBlocks =
                 this.filteredBlockBatch(enqueuingBlocks);
-
-              this.blockDispatcher.enqueueBlocks(
+              await this.blockDispatcher.enqueueBlocks(
                 cleanedBatchBlocks,
                 this.getLatestBufferHeight(cleanedBatchBlocks, enqueuingBlocks),
               );
@@ -521,21 +524,16 @@ export class FetchService implements OnApplicationShutdown {
         scaledBatchSize,
       );
 
-      if (handlers.length && this.getModulos().length === handlers.length) {
-        const enqueuingBlocks = this.getEnqueuedModuloBlocks(startBlockHeight);
-        const cleanedBatchBlocks = this.filteredBlockBatch(enqueuingBlocks);
-        this.blockDispatcher.enqueueBlocks(
-          cleanedBatchBlocks,
-          this.getLatestBufferHeight(cleanedBatchBlocks, enqueuingBlocks),
-        );
-      } else {
-        const enqueuingBlocks = range(startBlockHeight, endHeight + 1);
-        const cleanedBatchBlocks = this.filteredBlockBatch(enqueuingBlocks);
-        this.blockDispatcher.enqueueBlocks(
-          cleanedBatchBlocks,
-          this.getLatestBufferHeight(cleanedBatchBlocks, enqueuingBlocks),
-        );
-      }
+      const enqueuingBlocks =
+        handlers.length && this.getModulos().length === handlers.length
+          ? this.getEnqueuedModuloBlocks(startBlockHeight)
+          : range(startBlockHeight, endHeight + 1);
+
+      const cleanedBatchBlocks = this.filteredBlockBatch(enqueuingBlocks);
+      await this.blockDispatcher.enqueueBlocks(
+        cleanedBatchBlocks,
+        this.getLatestBufferHeight(cleanedBatchBlocks, enqueuingBlocks),
+      );
     }
   }
 
