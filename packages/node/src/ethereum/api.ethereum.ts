@@ -6,10 +6,10 @@ import http from 'http';
 import https from 'https';
 import { Interface } from '@ethersproject/abi';
 import { Block, TransactionReceipt } from '@ethersproject/abstract-provider';
-import { Provider, WebSocketProvider } from '@ethersproject/providers';
+import { WebSocketProvider } from '@ethersproject/providers';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { RuntimeDataSourceV0_2_0 } from '@subql/common-ethereum';
-import { getLogger, profiler } from '@subql/node-core';
+import { getLogger } from '@subql/node-core';
 import {
   ApiWrapper,
   BlockWrapper,
