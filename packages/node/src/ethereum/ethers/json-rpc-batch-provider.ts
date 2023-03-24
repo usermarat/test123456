@@ -59,7 +59,7 @@ export class JsonRpcBatchProvider extends JsonRpcProvider {
       }, 1);
     }
 
-    if (this._pendingBatch.length > 20) {
+    if (this._pendingBatch.length > 10) {
       this.flush();
     }
 
