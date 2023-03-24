@@ -297,14 +297,6 @@ export class ProjectService implements IProjectService {
     }
   }
 
-  async getAllDataSources(blockHeight: number): Promise<SubqlProjectDs[]> {
-    const dynamicDs = await this.dynamicDsService.getDynamicDatasources();
-
-    return [...this.dataSources, ...dynamicDs].filter(
-      (ds) => ds.startBlock <= blockHeight,
-    );
-  }
-
   async reindex(targetBlockHeight: number): Promise<void> {
     const lastProcessedHeight = await this.getLastProcessedHeight();
 
@@ -319,6 +311,14 @@ export class ProjectService implements IProjectService {
       this.mmrService,
       this.sequelize,
       /* Not providing force clean service, it should never be needed */
+    );
+  }
+
+  async getAllDataSources(blockHeight: number): Promise<SubqlProjectDs[]> {
+    const dynamicDs = await this.dynamicDsService.getDynamicDatasources();
+
+    return [...this.dataSources, ...dynamicDs].filter(
+      (ds) => ds.startBlock <= blockHeight,
     );
   }
 }
