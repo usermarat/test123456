@@ -176,7 +176,7 @@ export abstract class BlockDispatcher<B, DS>
               e,
               `failed to index block at height ${height} ${e.handler ? `${e.handler}(${e.stack ?? ''})` : ''}`
             );
-            throw e;
+            process.exit(1);
           }
         });
 
