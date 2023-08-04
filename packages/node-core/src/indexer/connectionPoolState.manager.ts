@@ -83,6 +83,8 @@ export class ConnectionPoolStateManager<T extends IApiConnectionSpecific<any, an
         return undefined;
       }
 
+      console.log('XXXX rate limited endpoint being used');
+
       // If there are rate-limited endpoints, return one of them at random
       return rateLimitedIndices[Math.floor(Math.random() * rateLimitedIndices.length)];
     }

@@ -5,11 +5,12 @@ import {getHeapStatistics} from 'v8';
 import {OnApplicationShutdown} from '@nestjs/common';
 import {EventEmitter2} from '@nestjs/event-emitter';
 import {last} from 'lodash';
+import {Observable, Subscriber, mergeMap} from 'rxjs';
 import {NodeConfig} from '../../configure';
 import {IndexerEvent} from '../../events';
 import {getLogger} from '../../logger';
 import {profilerWrap} from '../../profiler';
-import {Queue, AutoQueue, delay, memoryLock, waitForBatchSize} from '../../utils';
+import {Queue, AutoQueue, /*AutoQueue2,*/ delay, memoryLock, waitForBatchSize} from '../../utils';
 import {DynamicDsService} from '../dynamic-ds.service';
 import {PoiService} from '../poi/poi.service';
 import {SmartBatchService} from '../smartBatch.service';
@@ -39,6 +40,8 @@ export abstract class BlockDispatcher<B, DS>
   protected abstract indexBlock(block: B): Promise<ProcessBlockResponse>;
   protected abstract getBlockHeight(block: B): number;
 
+  private queueX: AutoQueue<any>;
+
   constructor(
     nodeConfig: NodeConfig,
     eventEmitter: EventEmitter2,
@@ -64,6 +67,7 @@ export abstract class BlockDispatcher<B, DS>
       dynamicDsService
     );
     this.processQueue = new AutoQueue(nodeConfig.batchSize * 3);
+    this.queueX = new AutoQueue(nodeConfig.batchSize * 2, nodeConfig.batchSize);
 
     if (this.nodeConfig.profiler) {
       this.fetchBlocksBatches = profilerWrap(fetchBlocksBatches, 'BlockDispatcher', 'fetchBlocksBatches');
@@ -110,79 +114,65 @@ export abstract class BlockDispatcher<B, DS>
 
     try {
       while (!this.isShutdown) {
-        // We know processQueue will have freeSpace defined because we define a capacity
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const blockNums = this.queue.takeMany(Math.min(this.nodeConfig.batchSize, this.processQueue.freeSpace!));
+        const blockNum = this.queue.take();
+
         // Used to compare before and after as a way to check if queue was flushed
         const bufferedHeight = this._latestBufferedHeight;
 
-        // Queue is empty
-        if (!blockNums.length) {
-          // The process queue might be full so no block nums were taken, wait and try again
-          if (this.queue.size) {
-            await delay(1);
-            continue;
-          }
-          break;
-        }
-
-        if (this.memoryleft() < 0) {
-          //stop fetching until memory is freed
-          await waitForBatchSize(this.minimumHeapLimit);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (!blockNum || !this.queueX.freeSpace! /* || (this.processQueue.freeSpace! - this.queueX.size!) <= 0*/) {
+          // console.log('xxxx', this.processQueue.freeSpace!, this.queueX.size, this.queueX.runningTasks.length, Object.keys(this.queueX.outOfOrderTasks).length)
+          await delay(1);
           continue;
         }
 
-        logger.info(
-          `fetch block [${blockNums[0]},${blockNums[blockNums.length - 1]}], total ${blockNums.length} blocks`
-        );
+        // if (memoryLock.isLocked()) {
+        //   await memoryLock.waitForUnlock();
+        // }
 
-        // If specVersion not changed, a known overallSpecVer will be pass in
-        // Otherwise use api to fetch runtimes
+        void this.queueX
+          .put(async () => {
+            const [block] = await this.fetchBlocksBatches([blockNum]);
 
-        if (memoryLock.isLocked()) {
-          await memoryLock.waitForUnlock();
-        }
+            // this.smartBatchService.addToSizeBuffer([block]);
+            return block;
+          })
+          .then((block) => {
+            const height = this.getBlockHeight(block);
+            // console.log('Indexing block', height)
+            // console.log('xxxx', this.processQueue.freeSpace!, this.queueX.size)
 
-        const blocks = await this.fetchBlocksBatches(blockNums);
+            void this.processQueue.put(async () => {
+              // Check if the queues have been flushed between queue.takeMany and fetchBlocksBatches resolving
+              // Peeking the queue is because the latestBufferedHeight could have regrown since fetching block
+              const peeked = this.queue.peek();
+              if (bufferedHeight > this._latestBufferedHeight || (peeked && peeked < blockNum)) {
+                logger.info(`Queue was reset for new DS, discarding fetched blocks`);
+                return;
+              }
 
-        this.smartBatchService.addToSizeBuffer(blocks);
+              try {
+                this.preProcessBlock(height);
+                // Inject runtimeVersion here to enhance api.at preparation
+                const processBlockResponse = await this.indexBlock(block);
 
-        // Check if the queues have been flushed between queue.takeMany and fetchBlocksBatches resolving
-        // Peeking the queue is because the latestBufferedHeight could have regrown since fetching block
-        const peeked = this.queue.peek();
-        if (bufferedHeight > this._latestBufferedHeight || (peeked && peeked < Math.min(...blockNums))) {
-          logger.info(`Queue was reset for new DS, discarding fetched blocks`);
-          continue;
-        }
+                await this.postProcessBlock(height, processBlockResponse);
 
-        const blockTasks = blocks.map((block) => async () => {
-          const height = this.getBlockHeight(block);
-          try {
-            this.preProcessBlock(height);
-            // Inject runtimeVersion here to enhance api.at preparation
-            const processBlockResponse = await this.indexBlock(block);
-
-            await this.postProcessBlock(height, processBlockResponse);
-
-            //set block to null for garbage collection
-            (block as any) = null;
-          } catch (e: any) {
-            // TODO discard any cache changes from this block height
-            if (this.isShutdown) {
-              return;
-            }
-            logger.error(
-              e,
-              `failed to index block at height ${height} ${e.handler ? `${e.handler}(${e.stack ?? ''})` : ''}`
-            );
-            throw e;
-          }
-        });
-
-        // There can be enough of a delay after fetching blocks that shutdown could now be true
-        if (this.isShutdown) break;
-
-        this.processQueue.putMany(blockTasks);
+                //set block to null for garbage collection
+                // (block as any) = null;
+              } catch (e: any) {
+                // TODO discard any cache changes from this block height
+                if (this.isShutdown) {
+                  return;
+                }
+                logger.error(
+                  e,
+                  `failed to index block at height ${height} ${e.handler ? `${e.handler}(${e.stack ?? ''})` : ''}`
+                );
+                throw e;
+              }
+            });
+          });
 
         this.eventEmitter.emit(IndexerEvent.BlockQueueSize, {
           value: this.processQueue.size,
