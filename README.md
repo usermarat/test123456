@@ -2,7 +2,7 @@
 
 **Flexible, reliable, and decentralised APIs for your web3 project**
 
-SubQuery is an Open, Flexible, Fast and Universal data indexing framework for web3. Our mission is to help developers create the decentralised products of the future. 
+SubQuery is an Open, Flexible, Fast and Universal data indexing  framework for web3. Our mission is to help developers create the decentralised products of the future. 
 
 SubQuery allows every Substrate/Polkadot team to process and query their data. The project is inspired by the growth of data protocols serving the application layer and its aim is to help Polkadot/Substrate projects build better dApps by allowing anyone to reliably find and consume data faster. Today, anyone can query and extract Polkadot network data in only minutes and at no cost.
 
